@@ -97,10 +97,10 @@ static void ngx_http_upstream_refreshed_hostname_handler(ngx_resolver_ctx_t *ctx
 
 /**
  * The directives defined by this module.
- **/  
+ **/
 static ngx_command_t  ngx_http_upstream_refreshed_hostname_commands[] = {
   /** The 'refreshed_hostname' directive. */
-  {                             
+  {
     ngx_string("refreshed_hostname"),            /**< Directive keyword.*/
     NGX_HTTP_UPS_CONF|NGX_CONF_1MORE, /**< Supported location and arity.  */
     ngx_http_upstream_refreshed_hostname,        /**< Setup function. */
@@ -196,7 +196,7 @@ ngx_http_upstream_refreshed_hostname_init_peer(ngx_http_request_t *r, ngx_http_u
   urpd->conf = urcf;
   urpd->clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
   urpd->current = -1;
-  
+
   /* Override the members of the ngx_peer_connection (ngx_event_connect.h) */
   r->upstream->peer.data = urpd;
   r->upstream->peer.free = ngx_http_upstream_refreshed_hostname_free_peer;
@@ -222,7 +222,7 @@ ngx_http_upstream_refreshed_hostname_init_peer(ngx_http_request_t *r, ngx_http_u
  * This uses the data stashed by the previous handlers to determine whether
  * the target upstream server is due for a re-resolution and, if so,
  * attempts to initiate that resolution.
- * 
+ *
  * When configuring the connection, loads the required data from the (updated)
  * refreshed_hostname config rather than the standard nginx upstream config.
  *
@@ -240,7 +240,7 @@ ngx_http_upstream_refreshed_hostname_get_peer(ngx_peer_connection_t *pc, void *d
   ngx_resolver_ctx_t                    *ctx;
   ngx_http_upstream_refreshed_hostname_peer_t      *peer;
 
-  /* Type the void pointer and fetch some data out of it. */ 
+  /* Type the void pointer and fetch some data out of it. */
   urpd = data;
   urcf = urpd->conf;
 
@@ -249,7 +249,7 @@ ngx_http_upstream_refreshed_hostname_get_peer(ngx_peer_connection_t *pc, void *d
 
   /* If already resolving, proceed. */
   if (urcf->resolved_status == NGX_REFRESHED_HOSTNAME_STATUS_WAIT) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolving"); 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolving");
     goto assign;
   }
 
@@ -258,23 +258,23 @@ ngx_http_upstream_refreshed_hostname_get_peer(ngx_peer_connection_t *pc, void *d
     goto assign;
   }
 
-  ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: update from DNS cache"); 
+  ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: update from DNS cache");
 
   /* Time to attempt to re-resolve... */
 
   /* Allocate resolver context. */
   ctx = ngx_resolve_start(urpd->clcf->resolver, NULL);
-  
+
   /* If resolver context can't be allocated, proceed and assume old value is good enough. */
   if (ctx == NULL) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolve_start fail"); 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolve_start fail");
     goto assign;
   }
   if (ctx == NGX_NO_RESOLVER) {
-    ngx_log_error(NGX_LOG_ALERT, pc->log, 0, "upstream_refreshed_hostname: no resolver"); 
+    ngx_log_error(NGX_LOG_ALERT, pc->log, 0, "upstream_refreshed_hostname: no resolver");
     goto assign;
   }
-  ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolve_start ok"); 
+  ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolve_start ok");
 
   /* Populate the context with the info for this upstram. */
   ctx->name = urcf->resolved_domain;
@@ -284,14 +284,14 @@ ngx_http_upstream_refreshed_hostname_get_peer(ngx_peer_connection_t *pc, void *d
 
   /* Mark the resolution in progress to avoid double submission. */
   urcf->resolved_status = NGX_REFRESHED_HOSTNAME_STATUS_WAIT;
-  
+
   /* Start resolution and log any issues. */
   if (ngx_resolve_name(ctx) != NGX_OK) {
     ngx_log_error(NGX_LOG_ALERT, pc->log, 0, "upstream_refreshed_hostname: resolve name \"%V\" fail", &ctx->name);
   }
 
 assign:
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolved_num=%ud", urcf->resolved_num); 
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolved_num=%ud", urcf->resolved_num);
 
   /* Select the next peer up in the rotation. */
   if (urpd->current == -1) {
@@ -478,7 +478,7 @@ ngx_http_upstream_refreshed_hostname(ngx_conf_t *cf, ngx_command_t *cmd, void *c
   for (i=0; i<u.naddrs; i++) {
     paddr = &urcf->peers[urcf->resolved_num];
     paddr->sockaddr = *((struct sockaddr*) u.addrs[i].sockaddr);
-    paddr->socklen = u.addrs[i].socklen; 
+    paddr->socklen = u.addrs[i].socklen;
     paddr->name = u.addrs[i].name;
 
     urcf->resolved_num++;
@@ -650,7 +650,7 @@ ngx_http_upstream_save_refreshed_hostname_peer_session(ngx_peer_connection_t *pc
     return;
   }
 
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, 
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                  "save session: %p", ssl_session);
 
   peer = &urpd->conf->peers[urpd->current];
