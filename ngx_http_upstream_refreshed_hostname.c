@@ -1,5 +1,5 @@
 /**
- * @file ngx_http_upstream_jdomain.c
+ * @file ngx_http_upstream_refreshed_hostname.c
  *
  * @brief Support upstream servers with re-resolved hostnames.
  *
@@ -19,8 +19,8 @@
 /**
  * The supported states for DNS resolution for a particular server..
  */
-#define NGX_JDOMAIN_STATUS_DONE 0
-#define NGX_JDOMAIN_STATUS_WAIT 1
+#define NGX_REFRESHED_HOSTNAME_STATUS_DONE 0
+#define NGX_REFRESHED_HOSTNAME_STATUS_WAIT 1
 
 /**
  * The connection information for a specific peer.
@@ -35,15 +35,15 @@ typedef struct {
 #if (NGX_HTTP_SSL)
   ngx_ssl_session_t    *ssl_session;   /* local to a process */
 #endif
-} ngx_http_upstream_jdomain_peer_t;
+} ngx_http_upstream_refreshed_hostname_peer_t;
 
 /**
- * The jdomain specific configuration for an upstream server.
+ * The refreshed_hostname specific configuration for an upstream server.
  **/
 /* TODO: Rename some of these members. */
 typedef struct {
   /** The resolved upstreams which will be connected to. */
-  ngx_http_upstream_jdomain_peer_t *peers;
+  ngx_http_upstream_refreshed_hostname_peer_t *peers;
   /** The default port to use when connecting to a peer. */
   ngx_uint_t                        default_port;
   /** The maximum number of peers to store for this server. */
@@ -63,47 +63,47 @@ typedef struct {
   /** Whether connecting to an upstream should be retried. */
   /* TODO: Should this be a flag? */
   ngx_uint_t                        upstream_retry;
-} ngx_http_upstream_jdomain_srv_conf_t;
+} ngx_http_upstream_refreshed_hostname_srv_conf_t;
 
 /**
  * The data to be attached to a peer connection to be accessible
  * by the hook handlers on that connection.
  */
 typedef struct {
-  /** The jdomain config for this upstream peer. */
-  ngx_http_upstream_jdomain_srv_conf_t *conf;
+  /** The refreshed_hostname config for this upstream peer. */
+  ngx_http_upstream_refreshed_hostname_srv_conf_t *conf;
   /** The configuration for the containing location block. */
   ngx_http_core_loc_conf_t             *clcf;
   /** The index of the peer which is being connected to. */
   ngx_int_t                             current;
-} ngx_http_upstream_jdomain_peer_data_t;
+} ngx_http_upstream_refreshed_hostname_peer_data_t;
 
 /**
  * @section Forward references.
  **/
 #if (NGX_HTTP_SSL)
 /* Why are these not static? */
-  ngx_int_t ngx_http_upstream_set_jdomain_peer_session(ngx_peer_connection_t *pc, void *data);
-  void ngx_http_upstream_save_jdomain_peer_session(ngx_peer_connection_t *pc, void *data);
+  ngx_int_t ngx_http_upstream_set_refreshed_hostname_peer_session(ngx_peer_connection_t *pc, void *data);
+  void ngx_http_upstream_save_refreshed_hostname_peer_session(ngx_peer_connection_t *pc, void *data);
 #endif
 
-static char *ngx_http_upstream_jdomain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static void * ngx_http_upstream_jdomain_create_conf(ngx_conf_t *cf);
-static ngx_int_t ngx_http_upstream_jdomain_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us);
-static ngx_int_t ngx_http_upstream_jdomain_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *us);
-static ngx_int_t ngx_http_upstream_jdomain_get_peer(ngx_peer_connection_t *pc, void *data);
-static void ngx_http_upstream_jdomain_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state);
-static void ngx_http_upstream_jdomain_handler(ngx_resolver_ctx_t *ctx);
+static char *ngx_http_upstream_refreshed_hostname(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static void * ngx_http_upstream_refreshed_hostname_create_conf(ngx_conf_t *cf);
+static ngx_int_t ngx_http_upstream_refreshed_hostname_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us);
+static ngx_int_t ngx_http_upstream_refreshed_hostname_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *us);
+static ngx_int_t ngx_http_upstream_refreshed_hostname_get_peer(ngx_peer_connection_t *pc, void *data);
+static void ngx_http_upstream_refreshed_hostname_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state);
+static void ngx_http_upstream_refreshed_hostname_handler(ngx_resolver_ctx_t *ctx);
 
 /**
  * The directives defined by this module.
  **/  
-static ngx_command_t  ngx_http_upstream_jdomain_commands[] = {
-  /** The 'jdomain' directive. */
+static ngx_command_t  ngx_http_upstream_refreshed_hostname_commands[] = {
+  /** The 'refreshed_hostname' directive. */
   {                             
-    ngx_string("jdomain"),            /**< Directive keyword.*/
+    ngx_string("refreshed_hostname"),            /**< Directive keyword.*/
     NGX_HTTP_UPS_CONF|NGX_CONF_1MORE, /**< Supported location and arity.  */
-    ngx_http_upstream_jdomain,        /**< Setup function. */
+    ngx_http_upstream_refreshed_hostname,        /**< Setup function. */
     0,                                /**< No offset, only support one context. */
     0,                                /**< No offset for storing configuration on struct. */
     NULL                              /**< ?? */
@@ -120,14 +120,14 @@ static ngx_command_t  ngx_http_upstream_jdomain_commands[] = {
  * of the assorted configuration locations in order to determine
  * the actual configuration for the module.
  **/
-static ngx_http_module_t  ngx_http_upstream_jdomain_module_ctx = {
+static ngx_http_module_t  ngx_http_upstream_refreshed_hostname_module_ctx = {
   NULL,                                           /**< Preconfiguration. */
   NULL,                                           /**< Postconfiguration. */
 
   NULL,                                           /**< Create main configuration. */
   NULL,                                           /**< Init main configuration. */
 
-  ngx_http_upstream_jdomain_create_conf,          /**< Create server configuration. */
+  ngx_http_upstream_refreshed_hostname_create_conf,          /**< Create server configuration. */
   NULL,                                           /**< Merge server configuration. */
 
   NULL,                                           /**< Create location configuration. */
@@ -137,10 +137,10 @@ static ngx_http_module_t  ngx_http_upstream_jdomain_module_ctx = {
 /**
  * The module definition which provides the top level mapping of module handlers.
  **/
-ngx_module_t  ngx_http_upstream_jdomain_module = {
+ngx_module_t  ngx_http_upstream_refreshed_hostname_module = {
   NGX_MODULE_V1,                                        /**< Macro for module version header. */
-  &ngx_http_upstream_jdomain_module_ctx,                /**< Module context to be passed as arg. */
-  ngx_http_upstream_jdomain_commands,                   /**< Module directives. */
+  &ngx_http_upstream_refreshed_hostname_module_ctx,                /**< Module context to be passed as arg. */
+  ngx_http_upstream_refreshed_hostname_commands,                   /**< Module directives. */
   NGX_HTTP_MODULE,                                      /**< Module type. */
 
   /* Hooks into assorted nginx lifecycle events (many of which are not even supported). */
@@ -155,52 +155,52 @@ ngx_module_t  ngx_http_upstream_jdomain_module = {
 };
 
 /**
- * Handler for upstream configuration hook to add jdomain config and logic.
+ * Handler for upstream configuration hook to add refreshed_hostname config and logic.
  *
  * @param[in] cf The nginx configuration.
  * @param[in] us The upstream server configuration for the destination peer.
  * @returns nginx status (NGX_OK).
  */
 static ngx_int_t
-ngx_http_upstream_jdomain_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
+ngx_http_upstream_refreshed_hostname_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 {
-  ngx_http_upstream_jdomain_srv_conf_t	*urcf;
+  ngx_http_upstream_refreshed_hostname_srv_conf_t  *urcf;
 
-  us->peer.init = ngx_http_upstream_jdomain_init_peer;
+  us->peer.init = ngx_http_upstream_refreshed_hostname_init_peer;
 
-  urcf = ngx_http_conf_upstream_srv_conf(us, ngx_http_upstream_jdomain_module);
-  urcf->resolved_status = NGX_JDOMAIN_STATUS_DONE;
+  urcf = ngx_http_conf_upstream_srv_conf(us, ngx_http_upstream_refreshed_hostname_module);
+  urcf->resolved_status = NGX_REFRESHED_HOSTNAME_STATUS_DONE;
 
   return NGX_OK;
 }
 
 /**
- * Handler for peer init to add jdomain logic.
+ * Handler for peer init to add refreshed_hostname logic.
  *
  * @param[in] r The current request
  * @param[in] us The upstream server configuration for the destination peer.
  * @returns nginx status (ERROR on allocation issue, otherwise OK).
  */
 static ngx_int_t
-ngx_http_upstream_jdomain_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *us) {
-  ngx_http_upstream_jdomain_peer_data_t	*urpd;
-  ngx_http_upstream_jdomain_srv_conf_t  *urcf;
+ngx_http_upstream_refreshed_hostname_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *us) {
+  ngx_http_upstream_refreshed_hostname_peer_data_t *urpd;
+  ngx_http_upstream_refreshed_hostname_srv_conf_t  *urcf;
 
-  urcf = ngx_http_conf_upstream_srv_conf(us, ngx_http_upstream_jdomain_module);
+  urcf = ngx_http_conf_upstream_srv_conf(us, ngx_http_upstream_refreshed_hostname_module);
 
   /* Allocate peer and populate data. */
-  urpd = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_jdomain_peer_data_t));
+  urpd = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_refreshed_hostname_peer_data_t));
   if (urpd == NULL) {
     return NGX_ERROR;
   }
   urpd->conf = urcf;
   urpd->clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
   urpd->current = -1;
-	
+  
   /* Override the members of the ngx_peer_connection (ngx_event_connect.h) */
   r->upstream->peer.data = urpd;
-  r->upstream->peer.free = ngx_http_upstream_jdomain_free_peer;
-  r->upstream->peer.get = ngx_http_upstream_jdomain_get_peer;
+  r->upstream->peer.free = ngx_http_upstream_refreshed_hostname_free_peer;
+  r->upstream->peer.get = ngx_http_upstream_refreshed_hostname_get_peer;
 
   if (urcf->upstream_retry) {
     r->upstream->peer.tries = (urcf->resolved_num != 1) ? urcf->resolved_num : 2;
@@ -209,22 +209,22 @@ ngx_http_upstream_jdomain_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv
   }
 
 #if (NGX_HTTP_SSL)
-  r->upstream->peer.set_session = ngx_http_upstream_set_jdomain_peer_session;
-  r->upstream->peer.save_session = ngx_http_upstream_save_jdomain_peer_session;
+  r->upstream->peer.set_session = ngx_http_upstream_set_refreshed_hostname_peer_session;
+  r->upstream->peer.save_session = ngx_http_upstream_save_refreshed_hostname_peer_session;
 #endif
 
   return NGX_OK;
 }
 
 /**
- * Handler for getting a peer connection hook to perform DNS resolutions and use the jdomain structs.
+ * Handler for getting a peer connection hook to perform DNS resolutions and use the refreshed_hostname structs.
  *
  * This uses the data stashed by the previous handlers to determine whether
  * the target upstream server is due for a re-resolution and, if so,
  * attempts to initiate that resolution.
  * 
  * When configuring the connection, loads the required data from the (updated)
- * jdomain config rather than the standard nginx upstream config.
+ * refreshed_hostname config rather than the standard nginx upstream config.
  *
  * @param[in] pc The peer connection which is being established.
  * @param[in] data A void pointer where arguments to this function may be stashed.
@@ -232,13 +232,13 @@ ngx_http_upstream_jdomain_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv
  **/
 /* TODO: This function is  long enough to split */
 static ngx_int_t
-ngx_http_upstream_jdomain_get_peer(ngx_peer_connection_t *pc, void *data)
+ngx_http_upstream_refreshed_hostname_get_peer(ngx_peer_connection_t *pc, void *data)
 {
-  ngx_http_upstream_jdomain_peer_data_t *urpd;
-  ngx_http_upstream_jdomain_srv_conf_t  *urcf;
+  ngx_http_upstream_refreshed_hostname_peer_data_t *urpd;
+  ngx_http_upstream_refreshed_hostname_srv_conf_t  *urcf;
 
   ngx_resolver_ctx_t                    *ctx;
-  ngx_http_upstream_jdomain_peer_t      *peer;
+  ngx_http_upstream_refreshed_hostname_peer_t      *peer;
 
   /* Type the void pointer and fetch some data out of it. */ 
   urpd = data;
@@ -248,8 +248,8 @@ ngx_http_upstream_jdomain_get_peer(ngx_peer_connection_t *pc, void *data)
   pc->connection = NULL;
 
   /* If already resolving, proceed. */
-  if (urcf->resolved_status == NGX_JDOMAIN_STATUS_WAIT) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_jdomain: resolving"); 
+  if (urcf->resolved_status == NGX_REFRESHED_HOSTNAME_STATUS_WAIT) {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolving"); 
     goto assign;
   }
 
@@ -258,7 +258,7 @@ ngx_http_upstream_jdomain_get_peer(ngx_peer_connection_t *pc, void *data)
     goto assign;
   }
 
-  ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_jdomain: update from DNS cache"); 
+  ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: update from DNS cache"); 
 
   /* Time to attempt to re-resolve... */
 
@@ -267,31 +267,31 @@ ngx_http_upstream_jdomain_get_peer(ngx_peer_connection_t *pc, void *data)
   
   /* If resolver context can't be allocated, proceed and assume old value is good enough. */
   if (ctx == NULL) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_jdomain: resolve_start fail"); 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolve_start fail"); 
     goto assign;
   }
   if (ctx == NGX_NO_RESOLVER) {
-    ngx_log_error(NGX_LOG_ALERT, pc->log, 0, "upstream_jdomain: no resolver"); 
+    ngx_log_error(NGX_LOG_ALERT, pc->log, 0, "upstream_refreshed_hostname: no resolver"); 
     goto assign;
   }
-  ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_jdomain: resolve_start ok"); 
+  ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolve_start ok"); 
 
   /* Populate the context with the info for this upstram. */
   ctx->name = urcf->resolved_domain;
-  ctx->handler = ngx_http_upstream_jdomain_handler;
+  ctx->handler = ngx_http_upstream_refreshed_hostname_handler;
   ctx->data = urcf;
   ctx->timeout = urpd->clcf->resolver_timeout;
 
   /* Mark the resolution in progress to avoid double submission. */
-  urcf->resolved_status = NGX_JDOMAIN_STATUS_WAIT;
+  urcf->resolved_status = NGX_REFRESHED_HOSTNAME_STATUS_WAIT;
   
   /* Start resolution and log any issues. */
   if (ngx_resolve_name(ctx) != NGX_OK) {
-    ngx_log_error(NGX_LOG_ALERT, pc->log, 0, "upstream_jdomain: resolve name \"%V\" fail", &ctx->name);
+    ngx_log_error(NGX_LOG_ALERT, pc->log, 0, "upstream_refreshed_hostname: resolve name \"%V\" fail", &ctx->name);
   }
 
 assign:
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_jdomain: resolved_num=%ud", urcf->resolved_num); 
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "upstream_refreshed_hostname: resolved_num=%ud", urcf->resolved_num); 
 
   /* Select the next peer up in the rotation. */
   if (urpd->current == -1) {
@@ -309,7 +309,7 @@ assign:
   pc->name = &peer->name;
 
   ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                 "upstream_jdomain: upstream to DNS peer (%s:%ud)",
+                 "upstream_refreshed_hostname: upstream to DNS peer (%s:%ud)",
                  inet_ntoa(((struct sockaddr_in*)(pc->sockaddr))->sin_addr),
                  ntohs((unsigned short)((struct sockaddr_in*)(pc->sockaddr))->sin_port));
 
@@ -325,7 +325,7 @@ assign:
  * @param[in] data Data stashed no the connection.
  **/
 static void
-ngx_http_upstream_jdomain_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state)
+ngx_http_upstream_refreshed_hostname_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state)
 {
   if (pc->tries > 0) {
     pc->tries--;
@@ -333,7 +333,7 @@ ngx_http_upstream_jdomain_free_peer(ngx_peer_connection_t *pc, void *data, ngx_u
 }
 
 /**
- * Handler for the 'jdomain' directive.
+ * Handler for the 'refreshed_hostname' directive.
  *
  * @param[in] cf The nginx configuration.
  * @param[in] cmd The nginx command?
@@ -342,10 +342,10 @@ ngx_http_upstream_jdomain_free_peer(ngx_peer_connection_t *pc, void *data, ngx_u
  **/
 /* TODO: This function should be split, long...too many local variables...two purposes */
 static char *
-ngx_http_upstream_jdomain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_http_upstream_refreshed_hostname(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
   ngx_http_upstream_srv_conf_t         *uscf;
-  ngx_http_upstream_jdomain_srv_conf_t *urcf;
+  ngx_http_upstream_refreshed_hostname_srv_conf_t *urcf;
   ngx_http_upstream_server_t           *us;
 
   /* Utility automatic variables */
@@ -367,7 +367,7 @@ ngx_http_upstream_jdomain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
   /* Whether to retry connections. */
   /* TODO: should this just be a flag? */
   ngx_uint_t                            retry;
-  ngx_http_upstream_jdomain_peer_t     *paddr;
+  ngx_http_upstream_refreshed_hostname_peer_t     *paddr;
   ngx_url_t                             u;
 
   /* Set some defaults. */
@@ -398,12 +398,12 @@ ngx_http_upstream_jdomain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
   }
   ngx_memzero(us, sizeof(ngx_http_upstream_server_t));
 
-  /* Add some jdomain specific goodness. */
+  /* Add some refreshed_hostname specific goodness. */
 
-  /* Fetch the jdomain configuration. */
-  urcf = ngx_http_conf_upstream_srv_conf(uscf, ngx_http_upstream_jdomain_module);
+  /* Fetch the refreshed_hostname configuration. */
+  urcf = ngx_http_conf_upstream_srv_conf(uscf, ngx_http_upstream_refreshed_hostname_module);
   /* Override the handler. */
-  uscf->peer.init_upstream = ngx_http_upstream_jdomain_init;
+  uscf->peer.init_upstream = ngx_http_upstream_refreshed_hostname_init;
 
   /* Parse the directive arguments. */
   value = cf->args->elts;
@@ -447,10 +447,10 @@ ngx_http_upstream_jdomain(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     goto invalid;
   }
 
-  /* Populate jdomain configuration.  */
+  /* Populate refreshed_hostname configuration.  */
 
   /* Allocate peers. */
-  urcf->peers = ngx_pcalloc(cf->pool, max_ips * sizeof(ngx_http_upstream_jdomain_peer_t));
+  urcf->peers = ngx_pcalloc(cf->pool, max_ips * sizeof(ngx_http_upstream_refreshed_hostname_peer_t));
   if (urcf->peers == NULL) {
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "ngx_palloc peers fail");
     return NGX_CONF_ERROR;
@@ -501,18 +501,18 @@ invalid:
 }
 
 /**
- * Create a jdomain configuration for the current server configuration.
+ * Create a refreshed_hostname configuration for the current server configuration.
  *
  * @param[in] cf The nginx configuration.
- * @returns The created ngx_http_upstream_jdomain_srv_conf.
+ * @returns The created ngx_http_upstream_refreshed_hostname_srv_conf.
  **/
 static void *
-ngx_http_upstream_jdomain_create_conf(ngx_conf_t *cf)
+ngx_http_upstream_refreshed_hostname_create_conf(ngx_conf_t *cf)
 {
-  ngx_http_upstream_jdomain_srv_conf_t	*conf;
+  ngx_http_upstream_refreshed_hostname_srv_conf_t  *conf;
 
   /* FIXME: Make this one line? */
-  conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_jdomain_srv_conf_t));
+  conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_refreshed_hostname_srv_conf_t));
 
   if (conf == NULL) {
     return NULL;
@@ -527,27 +527,27 @@ ngx_http_upstream_jdomain_create_conf(ngx_conf_t *cf)
  * @param[in] The resolver context for the current DNS query.
  */
 static void
-ngx_http_upstream_jdomain_handler(ngx_resolver_ctx_t *ctx)
+ngx_http_upstream_refreshed_hostname_handler(ngx_resolver_ctx_t *ctx)
 {
   struct sockaddr                      *addr;
   ngx_uint_t                            i;
   ngx_resolver_t                       *r;
-  ngx_http_upstream_jdomain_peer_t     *peer;
-  ngx_http_upstream_jdomain_srv_conf_t *urcf;
+  ngx_http_upstream_refreshed_hostname_peer_t     *peer;
+  ngx_http_upstream_refreshed_hostname_srv_conf_t *urcf;
 
   /* Unpack some data from the context argument. */
   r = ctx->resolver;
-  urcf = (ngx_http_upstream_jdomain_srv_conf_t *) ctx->data;
+  urcf = (ngx_http_upstream_refreshed_hostname_srv_conf_t *) ctx->data;
 
   /* Some initial sanity checks. */
   ngx_log_debug3(NGX_LOG_DEBUG_CORE, r->log, 0,
-                 "upstream_jdomain: \"%V\" resolved state(%i: %s)",
+                 "upstream_refreshed_hostname: \"%V\" resolved state(%i: %s)",
                  &ctx->name, ctx->state,
                  ngx_resolver_strerror(ctx->state));
 
   if (ctx->state || ctx->naddrs == 0) {
     ngx_log_error(NGX_LOG_ERR, r->log, 0,
-                  "upstream_jdomain: resolver failed ,\"%V\" (%i: %s))",
+                  "upstream_refreshed_hostname: resolver failed ,\"%V\" (%i: %s))",
                   &ctx->name, ctx->state,
                   ngx_resolver_strerror(ctx->state));
     goto end;
@@ -591,7 +591,7 @@ end:
   ngx_resolve_name_done(ctx);
 
   urcf->resolved_access = ngx_time();
-  urcf->resolved_status = NGX_JDOMAIN_STATUS_DONE;
+  urcf->resolved_status = NGX_REFRESHED_HOSTNAME_STATUS_DONE;
 }
 
 #if (NGX_HTTP_SSL)
@@ -600,17 +600,17 @@ end:
  * Handler for attaching an ssl_session to a connection.
  *
  * @param[in] pc The connection to which an SSL session should be attached.
- * @param[in] data The jdomain peer data stashed for this peer.
+ * @param[in] data The refreshed_hostname peer data stashed for this peer.
  * @returns ??
  **/
 ngx_int_t
-ngx_http_upstream_set_jdomain_peer_session(ngx_peer_connection_t *pc, void *data)
+ngx_http_upstream_set_refreshed_hostname_peer_session(ngx_peer_connection_t *pc, void *data)
 {
-  ngx_http_upstream_jdomain_peer_data_t *urpd;
+  ngx_http_upstream_refreshed_hostname_peer_data_t *urpd;
 
   ngx_int_t                              rc;
   ngx_ssl_session_t                     *ssl_session;
-  ngx_http_upstream_jdomain_peer_t      *peer;
+  ngx_http_upstream_refreshed_hostname_peer_t      *peer;
 
   /* Load some relevant data into locals. */
   urpd = data;
@@ -632,15 +632,15 @@ ngx_http_upstream_set_jdomain_peer_session(ngx_peer_connection_t *pc, void *data
  * If a session is found, store it for the peer and free any previous session.
  *
  * @param[in] pc The current connection.
- * @param[in] data The jdomain peer data stashed for this peer.
+ * @param[in] data The refreshed_hostname peer data stashed for this peer.
  */
 /* TODO: Is the new session guaranteed to not be equal to the old? */
 void
-ngx_http_upstream_save_jdomain_peer_session(ngx_peer_connection_t *pc, void *data)
+ngx_http_upstream_save_refreshed_hostname_peer_session(ngx_peer_connection_t *pc, void *data)
 {
-  ngx_http_upstream_jdomain_peer_data_t  *urpd;
+  ngx_http_upstream_refreshed_hostname_peer_data_t  *urpd;
   ngx_ssl_session_t                      *old_ssl_session, *ssl_session;
-  ngx_http_upstream_jdomain_peer_t       *peer;
+  ngx_http_upstream_refreshed_hostname_peer_t       *peer;
 
   urpd = data;
 
