@@ -99,9 +99,9 @@ static void ngx_http_upstream_jdomain_handler(ngx_resolver_ctx_t *ctx);
  * The directives defined by this module.
  **/  
 static ngx_command_t  ngx_http_upstream_jdomain_commands[] = {
-  /** The 'jdomain' directive. */
+  /** The 'hostname' directive. */
   {                             
-    ngx_string("jdomain"),            /**< Directive keyword.*/
+    ngx_string("hostname"),            /**< Directive keyword.*/
     NGX_HTTP_UPS_CONF|NGX_CONF_1MORE, /**< Supported location and arity.  */
     ngx_http_upstream_jdomain,        /**< Setup function. */
     0,                                /**< No offset, only support one context. */
